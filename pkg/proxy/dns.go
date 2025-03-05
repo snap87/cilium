@@ -6,15 +6,12 @@ package proxy
 import (
 	"github.com/sirupsen/logrus"
 
-	"github.com/cilium/cilium/pkg/fqdn/proxy"
 	"github.com/cilium/cilium/pkg/fqdn/restore"
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/cilium/pkg/policy"
+	"github.com/cilium/cilium/pkg/proxy/singleton"
 	"github.com/cilium/cilium/pkg/revert"
 )
-
-// DefaultDNSProxy is the global, shared, DNS Proxy singleton.
-var DefaultDNSProxy proxy.DNSProxier
 
 // dnsRedirect implements the Redirect interface for an l7 proxy
 type dnsRedirect struct {
@@ -58,14 +55,16 @@ func (dr *dnsRedirect) Close() {
 	dr.setRules(nil)
 }
 
-type dnsProxyIntegration struct{}
+type dnsProxyIntegration struct {
+	dnsProxy *singleton.DefaultDNSProxy
+}
 
 // createRedirect creates a redirect to the dns proxy. The redirect structure passed
 // in is safe to access for reading and writing.
 func (p *dnsProxyIntegration) createRedirect(redirect Redirect) (RedirectImplementation, error) {
 	dr := &dnsRedirect{
 		Redirect:         redirect,
-		proxyRuleUpdater: DefaultDNSProxy,
+		proxyRuleUpdater: p.dnsProxy.Get(),
 	}
 
 	return dr, nil
